@@ -1,3 +1,4 @@
+start.sh
 HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar
@@ -38,7 +39,3 @@ build/
 .env.prod
 .env.stage
 .env.test
-
-
-### scripts ###
-start.sh
