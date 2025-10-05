@@ -38,3 +38,7 @@ build/
 .env.prod
 .env.stage
 .env.test
+
+
+### scripts ###
+start.sh
