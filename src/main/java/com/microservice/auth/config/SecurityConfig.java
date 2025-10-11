@@ -15,12 +15,15 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/signup", "/register", "/login", "/css/**", "/js/**").permitAll()
+                        .requestMatchers("/signup/**", "/register", "/login", "/css/**", "/js/**")
+                        .permitAll()
                         // 🔒 Everything else requires authentication
                         .anyRequest().authenticated())
                 // ✅ Enable form login for protected routes
                 .formLogin(Customizer.withDefaults())
                 .logout(Customizer.withDefaults())
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/signup/**", "/register"))
                 .build();
     }
 

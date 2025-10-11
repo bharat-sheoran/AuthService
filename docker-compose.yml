@@ -17,15 +17,11 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis_service
-    restart: always
-    env_file:
-      - ${ENV_FILE:-.env.dev}
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    networks:
-      - app_network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
