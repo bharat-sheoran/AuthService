@@ -1,42 +1,39 @@
 package com.microservice.auth.services;
 
-import java.util.concurrent.TimeUnit;
+import java.util.Optional;
 
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import com.microservice.auth.entities.OTP;
+import com.microservice.auth.repositories.OtpRepository;
 
 @Service
 public class OtpService {
-    private final StringRedisTemplate redisTemplate;
+    @Autowired
+    private OtpRepository otpRepository;
 
-    public OtpService(StringRedisTemplate redisTemplate) {
-        this.redisTemplate = redisTemplate;
-    }
-
-    public void saveOtp(String email, String otp) {
-        // Store OTP with 10-minute expiry
-        redisTemplate.opsForValue().set(email, otp, 10, TimeUnit.MINUTES);
-    }
-
-    public String getOtp(String email) {
-        return redisTemplate.opsForValue().get(email);
-    }
-
-    public boolean verifyOtp(String email, String otp) {
-        String storedOtp = getOtp(email);
-        if (storedOtp != null && storedOtp.equals(otp)) {
-            // OTP is valid, remove it from Redis to prevent reuse
-            redisTemplate.delete(email);
-            return true;
+    public OTP createOtp(String email) {
+        Optional<OTP> existingOtp = otpRepository.findById(email);
+        if (existingOtp.isPresent()) {
+            throw new IllegalStateException("Verification OTP already sent. Please check your email or wait before requesting a new one.");
         }
-        return false;
+        OTP otp = OTP.create(email);
+        return otpRepository.save(otp);
     }
 
-    public boolean isOtpExpired(String email) {
-        return getOtp(email) == null;
+    public OTP resendOtp(String email) {
+        OTP otp = OTP.create(email);
+        return otpRepository.save(otp);
     }
 
-    public void deleteOtp(String email) {
-        redisTemplate.delete(email);
+    public boolean verifyOtp(String email, String code) {
+        return otpRepository.findById(email)
+                .filter(stored -> stored.matches(code))
+                .map(stored -> {
+                    otpRepository.deleteById(email); // invalidate after verification
+                    return true;
+                })
+                .orElse(false);
     }
 }

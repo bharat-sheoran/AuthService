@@ -16,16 +16,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 public class SignUpController {
-    @Autowired
-    private final OtpService otpService;
 
     @Autowired
-    private final KafkaProducer kafkaProducer;
-
-    SignUpController(KafkaProducer kafkaProducer, OtpService otpService) {
-        this.kafkaProducer = kafkaProducer;
-        this.otpService = otpService;
-    }
+    private KafkaProducer kafkaProducer;
+    @Autowired
+    private OtpService otpService;
 
     @GetMapping("/signup")
     public String showSignupForm(Model model) {
@@ -41,12 +36,15 @@ public class SignUpController {
             return "signup-email";
         }
 
-        String otp = String.valueOf((int) ((Math.random() * 900000) + 100000));
         String email = emailDto.getEmail();
-        otpService.saveOtp(email, otp);
-        kafkaProducer.sendOtp(email, otp);
-        model.addAttribute("email", email);
-        return "redirect:/signup/verify?email=" + email;
+        try {
+            kafkaProducer.sendOTP(email, otpService.createOtp(email));
+            model.addAttribute("email", email);
+            return "redirect:/signup/verify?email=" + email;
+        } catch (IllegalStateException e) {
+            model.addAttribute("error", e.getMessage());
+            return "signup-email";
+        }
     }
 
     @GetMapping("/signup/verify")
@@ -57,11 +55,11 @@ public class SignUpController {
 
     @PostMapping("/signup/verify")
     public String processOtpVerification(@RequestParam String email,
-                                       @RequestParam String otp,
-                                       Model model) {
+            @RequestParam String otp,
+            Model model) {
         try {
             boolean isValidOtp = otpService.verifyOtp(email, otp);
-            
+
             if (isValidOtp) {
                 // OTP is valid, proceed with user registration
                 model.addAttribute("message", "Email verified successfully! You can now complete your registration.");
@@ -85,16 +83,12 @@ public class SignUpController {
     @PostMapping("/signup/resend-otp")
     public String resendOtp(@RequestParam String email, Model model) {
         try {
-            // Generate new OTP
-            String newOtp = String.valueOf((int) ((Math.random() * 900000) + 100000));
-            otpService.saveOtp(email, newOtp);
-            kafkaProducer.sendOtp(email, newOtp);
-            
+            kafkaProducer.sendOTP(email, otpService.createOtp(email));
             model.addAttribute("message", "A new verification code has been sent to your email.");
             model.addAttribute("email", email);
             return "signup-verify";
-        } catch (Exception e) {
-            model.addAttribute("error", "Failed to resend verification code. Please try again.");
+        } catch (IllegalStateException e) {
+            model.addAttribute("error", e.getMessage());
             model.addAttribute("email", email);
             return "signup-verify";
         }
@@ -108,14 +102,14 @@ public class SignUpController {
 
     @PostMapping("/signup/complete")
     public String completeRegistration(@RequestParam String email,
-                                     @RequestParam String firstName,
-                                     @RequestParam String lastName,
-                                     @RequestParam String username,
-                                     @RequestParam String password,
-                                     @RequestParam String confirmPassword,
-                                     @RequestParam(required = false) String phoneNumber,
-                                     @RequestParam(required = false) Boolean agreeTerms,
-                                     Model model) {
+            @RequestParam String firstName,
+            @RequestParam String lastName,
+            @RequestParam String username,
+            @RequestParam String password,
+            @RequestParam String confirmPassword,
+            @RequestParam(required = false) String phoneNumber,
+            @RequestParam(required = false) Boolean agreeTerms,
+            Model model) {
         try {
             // Validate passwords match
             if (!password.equals(confirmPassword)) {
@@ -132,17 +126,17 @@ public class SignUpController {
             }
 
             // TODO: Create user account in database
-            // UserService.createUser(email, firstName, lastName, username, password, phoneNumber);
-            
+            // UserService.createUser(email, firstName, lastName, username, password,
+            // phoneNumber);
+
             model.addAttribute("message", "Registration completed successfully! Please log in with your credentials.");
             model.addAttribute("username", username);
             return "redirect:/login?registered=true";
-            
+
         } catch (Exception e) {
             model.addAttribute("error", "Registration failed. Please try again.");
             model.addAttribute("email", email);
             return "signup-complete";
         }
     }
-
 }

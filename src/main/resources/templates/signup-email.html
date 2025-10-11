@@ -9,6 +9,12 @@
 <body>
     <div class="container mt-5">
         <h2>Signup - Step 1: Enter Email</h2>
+        
+        <!-- Error message display -->
+        <div th:if="${error}" class="alert alert-danger" role="alert">
+            <span th:text="${error}"></span>
+        </div>
+        
         <form th:action="@{/signup}" th:object="${emailDto}" method="post">
             <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
