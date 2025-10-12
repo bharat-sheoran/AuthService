@@ -83,7 +83,7 @@ public class SignUpController {
     @PostMapping("/signup/resend-otp")
     public String resendOtp(@RequestParam String email, Model model) {
         try {
-            kafkaProducer.sendOTP(email, otpService.createOtp(email));
+            kafkaProducer.sendOTP(email, otpService.resendOtp(email));
             model.addAttribute("message", "A new verification code has been sent to your email.");
             model.addAttribute("email", email);
             return "signup-verify";
