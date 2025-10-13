@@ -11,6 +11,7 @@ import org.springframework.ui.Model;
 import com.microservice.auth.dto.EmailDto;
 import com.microservice.auth.services.KafkaProducer;
 import com.microservice.auth.services.OtpService;
+import com.microservice.auth.services.UserService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -21,6 +22,8 @@ public class SignUpController {
     private KafkaProducer kafkaProducer;
     @Autowired
     private OtpService otpService;
+    @Autowired
+    private UserService userService;
 
     @GetMapping("/signup")
     public String showSignupForm(Model model) {
@@ -37,6 +40,14 @@ public class SignUpController {
         }
 
         String email = emailDto.getEmail();
+        
+        // TODO: Convert this Email Checking Logic to UserService
+        // TODO: Also Accept password this time so that user oAuth can be implemented easily
+        if (userService.isEmailAlreadyRegistered(email)) {
+            model.addAttribute("error", "An account with this email already exists. Please use a different email or try logging in.");
+            return "signup-email";
+        }
+        
         try {
             kafkaProducer.sendOTP(email, otpService.createOtp(email));
             model.addAttribute("email", email);
@@ -54,7 +65,7 @@ public class SignUpController {
     }
 
     @PostMapping("/signup/verify")
-    public String processOtpVerification(@RequestParam String email,
+    public String processOtpVerification(@RequestParam String email, // TODO: Add DTO in this request
             @RequestParam String otp,
             Model model) {
         try {
@@ -81,7 +92,7 @@ public class SignUpController {
     }
 
     @PostMapping("/signup/resend-otp")
-    public String resendOtp(@RequestParam String email, Model model) {
+    public String resendOtp(@RequestParam String email, Model model) { // TODO: Add DTO in this request
         try {
             kafkaProducer.sendOTP(email, otpService.resendOtp(email));
             model.addAttribute("message", "A new verification code has been sent to your email.");
@@ -101,7 +112,7 @@ public class SignUpController {
     }
 
     @PostMapping("/signup/complete")
-    public String completeRegistration(@RequestParam String email,
+    public String completeRegistration(@RequestParam String email, // TODO: Add DTO in this request
             @RequestParam String firstName,
             @RequestParam String lastName,
             @RequestParam String username,
@@ -111,28 +122,30 @@ public class SignUpController {
             @RequestParam(required = false) Boolean agreeTerms,
             Model model) {
         try {
-            // Validate passwords match
-            if (!password.equals(confirmPassword)) {
-                model.addAttribute("error", "Passwords do not match.");
-                model.addAttribute("email", email);
-                return "signup-complete";
-            }
-
-            // Validate terms agreement
             if (agreeTerms == null || !agreeTerms) {
                 model.addAttribute("error", "You must agree to the Terms of Service and Privacy Policy.");
                 model.addAttribute("email", email);
                 return "signup-complete";
             }
 
-            // TODO: Create user account in database
-            // UserService.createUser(email, firstName, lastName, username, password,
-            // phoneNumber);
+            // Create user account and automatically authenticate
+            userService.createUser(email, username, password, firstName, lastName, phoneNumber);
 
-            model.addAttribute("message", "Registration completed successfully! Please log in with your credentials.");
+            // User is now automatically authenticated, redirect to dashboard
+            model.addAttribute("message", "Registration completed successfully! Welcome to your account.");
             model.addAttribute("username", username);
-            return "redirect:/login?registered=true";
+            return "redirect:/dashboard?welcome=true";
 
+        } catch (IllegalArgumentException e) {
+            // Validation errors from UserService
+            model.addAttribute("error", e.getMessage());
+            model.addAttribute("email", email);
+            return "signup-complete";
+        } catch (IllegalStateException e) {
+            // Business logic errors (email/username already exists)
+            model.addAttribute("error", e.getMessage());
+            model.addAttribute("email", email);
+            return "signup-complete";
         } catch (Exception e) {
             model.addAttribute("error", "Registration failed. Please try again.");
             model.addAttribute("email", email);
