@@ -44,3 +44,6 @@ server:
 logging:
   level:
     '[org.springframework.security]': info
+
+jwt:
+  secret: mySuperSecretKeyForJWTSigning

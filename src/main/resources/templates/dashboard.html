@@ -14,12 +14,11 @@
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">
                     <i class="fas fa-user"></i> Welcome, <span th:text="${username}">User</span>
+                    <small class="text-muted d-block">Auth: JWT Token (Stateless)</small>
                 </span>
-                <form class="d-inline" th:action="@{/logout}" method="post">
-                    <button type="submit" class="btn btn-outline-light btn-sm">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </form>
+                <button onclick="logout()" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
             </div>
         </div>
     </nav>
@@ -44,7 +43,8 @@
                                 <h5>Account Information</h5>
                                 <p><strong>Username:</strong> <span th:text="${username}">user</span></p>
                                 <p><strong>Status:</strong> <span class="text-success">Active</span></p>
-                                <p><strong>Email Verified:</strong> <span class="text-success"><i class="fas fa-check"></i> Yes</span></p>
+                                <p><strong>Authentication:</strong> <span class="text-info"><i class="fas fa-key"></i> JWT Token</span></p>
+                                <p><strong>Session:</strong> <span class="text-warning"><i class="fas fa-times"></i> Stateless (No Sessions)</span></p>
                             </div>
                             <div class="col-md-6">
                                 <h5>Quick Actions</h5>
@@ -98,6 +98,48 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Logout function for JWT token-based auth
+        function logout() {
+            // Clear tokens from localStorage
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('tokenType');
+            localStorage.removeItem('username');
+            
+            // Redirect to login page
+            window.location.href = '/token-login';
+        }
+
+        // Verify token is still valid on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const accessToken = localStorage.getItem('accessToken');
+            if (!accessToken) {
+                // No token found, redirect to login
+                window.location.href = '/token-login';
+                return;
+            }
+
+            // Test token validity
+            fetch('/api/auth/user-info', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + accessToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    // Token is invalid, redirect to login
+                    logout();
+                }
+            })
+            .catch(error => {
+                console.log('Token validation failed:', error);
+                logout();
+            });
+        });
+    </script>
 </body>
 
 </html>
