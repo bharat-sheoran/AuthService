@@ -27,7 +27,7 @@ public class AuthComponent implements AuthenticationSuccessHandler {
             Authentication authentication) throws IOException, ServletException {
         String username = authentication.getName();
         String accessToken = tokenService.generateAccessToken(username);
-        String refreshToken = tokenService.generateRefreshToken();
+        String refreshToken = tokenService.generateRefreshToken(username);
 
         ResponseCookie accessCookie = ResponseCookie.from("access_token", "Bearer " + accessToken)
                 .httpOnly(true)

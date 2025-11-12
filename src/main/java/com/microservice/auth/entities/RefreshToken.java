@@ -1,29 +1,22 @@
 package com.microservice.auth.entities;
 
+import java.util.Base64;
 import java.util.UUID;
+
+import com.microservice.auth.AppConstants;
+
+import java.security.SecureRandom;
 import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
 @Entity
 @Table(name = "refresh_tokens")
 public class RefreshToken {
@@ -41,9 +34,38 @@ public class RefreshToken {
     // @JoinColumn(name = "user_id", nullable = false)
     private String username;
 
-    public RefreshToken(String token, Instant expiresAt, String username) {
+    private RefreshToken(String token, Instant expiresAt, String username) {
         this.token = token;
         this.expiresAt = expiresAt;
         this.username = username;
     }
+
+    protected RefreshToken() {
+        // JPA requirement
+    }
+
+    public static RefreshToken generate(String username) {
+        return new RefreshToken(
+                generateToken(),
+                Instant.now().plusMillis(AppConstants.getRefreshTokenExpirationMs()),
+                username);
+    }
+
+    // public RefreshToken decode(String token) {
+    // // Extract username from DB using the token
+    // }
+
+    private static String generateToken() {
+        byte[] randomBytes = new byte[32];
+        new SecureRandom().nextBytes(randomBytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+    }
+
+    public boolean isExpired() {
+        return expiresAt.isBefore(Instant.now());
+    }
+
+    // public RefreshToken rotate(String token) {
+    // // TODO: Implement token rotation logic
+    // }
 }

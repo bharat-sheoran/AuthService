@@ -13,7 +13,6 @@ import com.microservice.auth.entities.RefreshToken;
 import com.microservice.auth.repositories.RefreshTokenRepository;
 import com.microservice.auth.services.TokenService;
 import jakarta.validation.Valid;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,8 +31,6 @@ public class AuthController {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
-    private static final long REFRESH_TOKEN_EXPIRATION_MS = 7L * 24 * 60 * 60 * 1000L;
-
     /**
      * Login endpoint that returns JWT tokens
      */
@@ -49,10 +46,7 @@ public class AuthController {
             if (authentication.isAuthenticated()) {
                 // Generate JWT tokens
                 String accessToken = tokenService.generateAccessToken(authentication.getName());
-                RefreshToken refreshToken = new RefreshToken(
-                        tokenService.generateRefreshToken(),
-                        Instant.now().plusMillis(REFRESH_TOKEN_EXPIRATION_MS),
-                        authentication.getName());
+                RefreshToken refreshToken = RefreshToken.generate(authentication.getName());
 
                 refreshTokenRepository.save(refreshToken);
 
